@@ -31,6 +31,8 @@ class Tokenizer {
     const std::string symbolPrimers = ";,!=[]&|()+-*<>";
     
     void readLine() {
+        // prevent tokens from accumulating across lines
+        currentLine.clear();
         // Grab the next non-empty line
         std::string line;
         while(std::getline(inputFile, line)) {
@@ -75,7 +77,8 @@ class Tokenizer {
             // }
         } else {
             currentLine.clear();
-        }            
+        }
+        currentIndex = 0;            
     }
 
     // separate tokens 
@@ -143,6 +146,7 @@ class Tokenizer {
         } catch (const std::exception& e) {
             std::cout << e.what();
         }
+
 
         lineCount = 0;
         readLine();
