@@ -4,12 +4,11 @@
 #include <fstream>
 #include <exception>
 #include <sstream>
-
-using namespace std;
+#include <algorithm>
 
 class Tokenizer {
     private:
-    int lineCount;
+        int lineCount;
         std::vector<std::string> currentLine;
         std::ifstream inputFile;
 
@@ -24,6 +23,9 @@ class Tokenizer {
 		    "&&", "||", "(", ")", "+", "-",
 		    "*", "!=", "==", "<", ">", "<=",">="
         };
+
+        // Used for determining if token has symbol wedeged inside
+        const std::string symbolPrimers = ";,!=[]&|()+-*<>";
         
         void readLine() {
             // Grab the next non-empty line
@@ -54,19 +56,64 @@ class Tokenizer {
                 // separate symbols and reserved keywords that are connected together
                 for (int i = 0; i < currentLine.size(); i++) {
                     // skip if token is already perfect reserved word or symbol
-                    if (!count(reserved.begin(), reserved.end(), currentLine.at(i)) 
-                    && !count(symbols.begin(), symbols.end(), currentLine.at(i))) {
-                        // separate token and symbol
-                        /*
-                            TODO **************************************************
-                            separate token and symbol *****************************
-                            don't have to worry about foriegn symbols or characters
-                        */
+                    if (std::find(reserved.begin(), reserved.end(), currentLine.at(i)) == reserved.end()
+                    && std::find(symbols.begin(), symbols.end(), currentLine.at(i)) == symbols.end()) {
+                        // determine if token contains char from symbols
+                        for (char c: symbolPrimers) {
+                            if (currentLine[i].find(c) != std::string::npos){
+                                separate(i);
+                                break;
+                            }
+                        }
                     }
+                }
+                // Debugging purposes *************************
+                for (auto t: currentLine) {
+                    std::cout << t << "\n";
                 }
             } else {
                 currentLine.clear();
             }            
+        }
+
+        // separate tokens 
+        void separate(int i) {
+            std::string token = currentLine.at(i);
+            std::vector<std::string> separatedTokens;
+            int current = 0;
+            int start = 0;
+
+            while (current < token.length()) {
+                // check for start of new symbol
+                if (symbolPrimers.find(token.substr(current, 1)) != std::string::npos) {
+                    // add token up till this point
+                    if (current > 0 && (current - start) > 0) {
+                        separatedTokens.push_back(token.substr(start, current - start));
+                        // update current for next token
+                        start = current;
+                    } 
+                    // Greedy check 
+                    if (current + 1 < token.length() && std::count(symbols.begin(), symbols.end(), token.substr(current, 2))) {
+                        separatedTokens.push_back(token.substr(current, 2));
+                        start += 2;
+                    // greedy check fails, try for length of 1
+                    } else if (std::count(symbols.begin(), symbols.end(), token.substr(current, 1))) {
+                        separatedTokens.push_back(token.substr(current, 1));
+                        start++;
+                    } else {
+                        throw std::runtime_error("Invalid symbol at line: " + std::to_string(lineCount));
+                    }
+                    current = start;
+                } else current++;
+            } 
+            if (start != current) {
+                separatedTokens.push_back(token.substr(start, current - start));
+            } 
+
+            // erase the current token with the vector of broken up tokens
+            auto it_pos = currentLine.begin() + i;
+            auto next_it = currentLine.erase(it_pos);
+            currentLine.insert(next_it, separatedTokens.begin(), separatedTokens.end());
         }
 
     public:
@@ -83,3 +130,7 @@ class Tokenizer {
         readLine();
     }
 };
+
+int main() {
+    Tokenizer trial("test");
+}
